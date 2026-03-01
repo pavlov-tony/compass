@@ -24,7 +24,7 @@ type IPLookup struct {
 	quit   chan struct{}
 }
 
-func newIPLookup(dbPath string) (*IPLookup, error) {
+func NewIPLookup(dbPath string) (*IPLookup, error) {
 	db, err := maxminddb.Open(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database file: %v", err)
@@ -80,9 +80,11 @@ func (l *IPLookup) Metadata(ctx context.Context, state request.Request) context.
 		return ctx
 	}
 
-	metadata.SetValueFunc(ctx, pluginName+"/country/code", func() string {
-		return record.Country.ISOCode
-	})
+	if record.Country.ISOCode != "" {
+		metadata.SetValueFunc(ctx, pluginName+"/country/code", func() string {
+			return record.Country.ISOCode
+		})
+	}
 
 	return ctx
 }
