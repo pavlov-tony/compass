@@ -46,10 +46,14 @@ func iplookupParse(c *caddy.Controller) (*IPLookup, error) {
 		}
 	}
 
-	ipLookup, err := NewIPLookup(dbPath)
-	if err != nil {
-		return nil, c.Errf("initialize iplookup plugin: %v", err)
+	if dbPath == "" {
+		return nil, c.Err("no db file specified")
 	}
 
-	return ipLookup, nil
+	db, err := OpenDB(dbPath)
+	if err != nil {
+		return nil, c.Errf("open database: %v", err)
+	}
+
+	return NewIPLookup(dbPath, db), nil
 }

@@ -16,7 +16,7 @@ import (
 
 func TestNewIPLookup(t *testing.T) {
 	// Test case: non-existent file
-	_, err := NewIPLookup("non-existent-file.mmdb")
+	_, err := OpenDB("non-existent-file.mmdb")
 	if err == nil {
 		t.Fatal("Expected an error for a non-existent database file, but got none")
 	}
@@ -30,10 +30,11 @@ func TestServeDNS(t *testing.T) {
 		t.Skipf("Skipping ServeDNS test: test database not found at %s", dbPath)
 	}
 
-	ipLookup, err := NewIPLookup(dbPath)
+	db, err := OpenDB(dbPath)
 	if err != nil {
-		t.Fatalf("Failed to create IPLookup instance: %v", err)
+		t.Fatalf("Failed to open DB: %v", err)
 	}
+	ipLookup := NewIPLookup(dbPath, db)
 
 	// Set up a next plugin that records it was called.
 	called := false
@@ -66,10 +67,11 @@ func TestIPLookupMetadata(t *testing.T) {
 		t.Skipf("Skipping metadata test: test database not found at %s. Please download it from MaxMind's GitHub.", dbPath)
 	}
 
-	ipLookup, err := NewIPLookup(dbPath)
+	db, err := OpenDB(dbPath)
 	if err != nil {
-		t.Fatalf("Failed to create IPLookup instance: %v", err)
+		t.Fatalf("Failed to open DB: %v", err)
 	}
+	ipLookup := NewIPLookup(dbPath, db)
 	defer ipLookup.Close()
 
 	tests := []struct {

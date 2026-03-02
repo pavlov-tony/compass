@@ -24,7 +24,8 @@ type IPLookup struct {
 	quit   chan struct{}
 }
 
-func NewIPLookup(dbPath string) (*IPLookup, error) {
+// OpenDB opens the MaxMind database and verifies it has the correct type.
+func OpenDB(dbPath string) (*maxminddb.Reader, error) {
 	db, err := maxminddb.Open(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database file: %v", err)
@@ -33,13 +34,17 @@ func NewIPLookup(dbPath string) (*IPLookup, error) {
 	switch dbType := db.Metadata.DatabaseType; dbType {
 	case "City", "Country":
 	default:
+		db.Close()
 		return nil, fmt.Errorf("database type %s does not provide country geographic data", dbType)
 	}
+	return db, nil
+}
 
+func NewIPLookup(dbPath string, db *maxminddb.Reader) *IPLookup {
 	ipLookup := &IPLookup{dbPath: dbPath, quit: make(chan struct{})}
 	ipLookup.db.Store(db)
 
-	return ipLookup, nil
+	return ipLookup
 }
 
 // ServeDNS implements the plugin.Handler interface.
