@@ -55,10 +55,7 @@ func (s *Steering) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 		}
 		m.Answer = []dns.RR{rr}
 
-		if err := w.WriteMsg(m); err != nil {
-			return dns.RcodeServerFailure, err
-		}
-		return dns.RcodeSuccess, nil
+		return dns.RcodeSuccess, w.WriteMsg(m)
 	}
 
 	return plugin.NextOrFailure(pluginName, s.next, ctx, w, r)
