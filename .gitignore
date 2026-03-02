@@ -33,3 +33,6 @@ go.work.sum
 
 # Generated test MaxMind DB
 *.mmdb
+
+# Compiled go binary
+bin/*

@@ -9,6 +9,7 @@ require (
 	github.com/maxmind/mmdbwriter v1.2.0
 	github.com/miekg/dns v1.1.72
 	github.com/oschwald/maxminddb-golang/v2 v2.1.1
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
