@@ -88,7 +88,7 @@ func (i *IPLookup) StartWatcher() error {
 // Reload creates a new reader instance and swaps it with the old one atomically.
 func (i *IPLookup) Reload() error {
 	// Open the new DB file directly.
-	newDB, err := OpenDB(i.dbPath)
+	newDB, err := openDB(i.dbPath)
 	if err != nil {
 		return err
 	}

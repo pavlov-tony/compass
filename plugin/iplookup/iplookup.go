@@ -18,14 +18,15 @@ import (
 var log = clog.NewWithPlugin(pluginName)
 
 type IPLookup struct {
-	next   plugin.Handler
-	db     atomic.Pointer[maxminddb.Reader]
-	dbPath string
-	quit   chan struct{}
+	next               plugin.Handler
+	db                 atomic.Pointer[maxminddb.Reader]
+	dbPath             string
+	defaultCountryCode string
+	quit               chan struct{}
 }
 
 // OpenDB opens the MaxMind database and verifies it has the correct type.
-func OpenDB(dbPath string) (*maxminddb.Reader, error) {
+func openDB(dbPath string) (*maxminddb.Reader, error) {
 	db, err := maxminddb.Open(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database file: %v", err)
@@ -40,8 +41,8 @@ func OpenDB(dbPath string) (*maxminddb.Reader, error) {
 	return db, nil
 }
 
-func NewIPLookup(dbPath string, db *maxminddb.Reader) *IPLookup {
-	ipLookup := &IPLookup{dbPath: dbPath, quit: make(chan struct{})}
+func NewIPLookup(dbPath string, db *maxminddb.Reader, defaultCountryCode string) *IPLookup {
+	ipLookup := &IPLookup{dbPath: dbPath, quit: make(chan struct{}), defaultCountryCode: defaultCountryCode}
 	ipLookup.db.Store(db)
 
 	return ipLookup
@@ -56,6 +57,12 @@ func (l *IPLookup) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 // the data associated with the source IP of every request.
 func (l *IPLookup) Metadata(ctx context.Context, state request.Request) context.Context {
 	srcIP := net.ParseIP(state.IP())
+	if srcIP == nil {
+		metadata.SetValueFunc(ctx, pluginName+"/country/code", func() string {
+			return l.defaultCountryCode
+		})
+		return ctx
+	}
 
 	if o := state.Req.IsEdns0(); o != nil {
 		for _, s := range o.Option {
@@ -85,11 +92,12 @@ func (l *IPLookup) Metadata(ctx context.Context, state request.Request) context.
 		return ctx
 	}
 
-	if record.Country.ISOCode != "" {
-		metadata.SetValueFunc(ctx, pluginName+"/country/code", func() string {
-			return record.Country.ISOCode
-		})
+	if record.Country.ISOCode == "" {
+		record.Country.ISOCode = l.defaultCountryCode
 	}
+	metadata.SetValueFunc(ctx, pluginName+"/country/code", func() string {
+		return record.Country.ISOCode
+	})
 
 	return ctx
 }
