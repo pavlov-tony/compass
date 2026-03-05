@@ -1,76 +1,75 @@
 package steering
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/coredns/caddy"
 )
 
 func TestSetup(t *testing.T) {
-	configFile := filepath.Join("testdata", "steering_config.yaml")
-	invalidConfigFile := filepath.Join("testdata", "invalid_config.yaml")
-
 	tests := []struct {
 		name      string
 		input     string
 		shouldErr bool
 	}{
 		{
-			name:      "Missing config file",
+			name:      "Missing server address",
 			input:     `steering`,
 			shouldErr: true,
 		},
 		{
 			name:      "Too many arguments",
-			input:     `steering ` + configFile + ` extra`,
-			shouldErr: true,
-		},
-		{
-			name:      "Multiple config paths",
-			input:     `steering ` + configFile + ` ` + configFile,
-			shouldErr: true,
-		},
-		{
-			name:      "Non-existent config file",
-			input:     `steering /tmp/nonexistent.yaml`,
-			shouldErr: true,
-		},
-		{
-			name: "Invalid IP in config file",
-			input: `steering ` + invalidConfigFile + ` {
-				metadata_key iplookup/country/code
-				fallback_ip 1.1.1.1
-			}`,
+			input:     `steering localhost:50051 extra`,
 			shouldErr: true,
 		},
 		{
 			name: "Missing metadata key",
-			input: `steering ` + configFile + ` {
+			input: `steering localhost:50051 {
 				fallback_ip 1.1.1.1
+				node_id 12345
 			}`,
 			shouldErr: true,
 		},
 		{
 			name: "Missing fallback IP",
-			input: `steering ` + configFile + ` {
+			input: `steering localhost:50051 {
 				metadata_key iplookup/country/code
+				node_id 12345
+			}`,
+			shouldErr: true,
+		},
+		{
+			name: "Missing node id",
+			input: `steering localhost:50051 {
+				metadata_key iplookup/country/code
+				fallback_ip 1.1.1.1
 			}`,
 			shouldErr: true,
 		},
 		{
 			name: "Invalid fallback IP",
-			input: `steering ` + configFile + ` {
+			input: `steering localhost:50051 {
 				metadata_key iplookup/country/code
 				fallback_ip invalid-ip
+				node_id 12345
 			}`,
 			shouldErr: true,
 		},
 		{
 			name: "Valid configuration",
-			input: `steering ` + configFile + ` {
+			input: `steering localhost:50051 {
 				metadata_key iplookup/country/code
 				fallback_ip 1.1.1.1
+				node_id 12345
+			}`,
+			shouldErr: false,
+		},
+		{
+			name: "Valid configuration with grpc scheme",
+			input: `steering grpc://localhost:50051 {
+				metadata_key iplookup/country/code
+				fallback_ip 1.1.1.1
+				node_id 12345
 			}`,
 			shouldErr: false,
 		},

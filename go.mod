@@ -3,13 +3,15 @@ module compass
 go 1.25.5
 
 require (
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coredns/caddy v1.1.4-0.20250930002214-15135a999495
 	github.com/coredns/coredns v1.14.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/maxmind/mmdbwriter v1.2.0
 	github.com/miekg/dns v1.1.72
 	github.com/oschwald/maxminddb-golang/v2 v2.1.1
-	gopkg.in/yaml.v2 v2.4.0
+	google.golang.org/grpc v1.78.0
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -39,6 +41,4 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.40.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect
-	google.golang.org/grpc v1.78.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )

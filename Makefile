@@ -1,14 +1,22 @@
 .PHONY: generate
 generate:
-	go generate ./...
+	@echo "Running go generate..."
+	@go generate ./...
+
+.PHONY: proto
+proto:
+	@echo "Generating Protobuf files..."
+	@buf generate
 
 .PHONY: test
 test: generate
-	go test -v -cover ./...
+	@echo "Running tests..."
+	@go test -v -cover ./...
 
 .PHONY: docker-build
 docker-build:
-	docker build -t compass .
+	@echo "Building Docker image..."
+	@docker build -t compass .
 
 .PHONY: build-binary
 build-binary: docker-build
