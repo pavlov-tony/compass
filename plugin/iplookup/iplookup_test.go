@@ -16,7 +16,7 @@ import (
 
 func TestNewIPLookup(t *testing.T) {
 	// Test case: non-existent file
-	_, err := OpenDB("non-existent-file.mmdb")
+	_, err := openDB("non-existent-file.mmdb")
 	if err == nil {
 		t.Fatal("Expected an error for a non-existent database file, but got none")
 	}
@@ -30,11 +30,12 @@ func TestServeDNS(t *testing.T) {
 		t.Skipf("Skipping ServeDNS test: test database not found at %s", dbPath)
 	}
 
-	db, err := OpenDB(dbPath)
+	db, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
 	}
-	ipLookup := NewIPLookup(dbPath, db)
+	ipLookup := NewIPLookup(dbPath, db, "DE")
+	defer ipLookup.Close()
 
 	// Set up a next plugin that records it was called.
 	called := false
@@ -67,43 +68,38 @@ func TestIPLookupMetadata(t *testing.T) {
 		t.Skipf("Skipping metadata test: test database not found at %s. Please download it from MaxMind's GitHub.", dbPath)
 	}
 
-	db, err := OpenDB(dbPath)
+	db, err := openDB(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
 	}
-	ipLookup := NewIPLookup(dbPath, db)
+	ipLookup := NewIPLookup(dbPath, db, "DE")
 	defer ipLookup.Close()
 
 	tests := []struct {
-		name          string
-		remoteIP      string
-		edns0subnet   *dns.EDNS0_SUBNET
-		expectedCode  string
-		shouldHaveVal bool
+		name         string
+		remoteIP     string
+		edns0subnet  *dns.EDNS0_SUBNET
+		expectedCode string
 	}{
 		{
-			name:          "German IPv4 in DB",
-			remoteIP:      "141.1.1.1",
-			expectedCode:  "DE",
-			shouldHaveVal: true,
+			name:         "German IPv4 in DB",
+			remoteIP:     "141.1.1.1",
+			expectedCode: "DE",
 		},
 		{
-			name:          "Netherlands IPv6 in DB",
-			remoteIP:      "2a02:7b00::",
-			expectedCode:  "NL",
-			shouldHaveVal: true,
+			name:         "Netherlands IPv6 in DB",
+			remoteIP:     "2a02:7b00::",
+			expectedCode: "NL",
 		},
 		{
-			name:          "Spain IPv4 in DB",
-			remoteIP:      "217.65.48.0",
-			expectedCode:  "ES",
-			shouldHaveVal: true,
+			name:         "Spain IPv4 in DB",
+			remoteIP:     "217.65.48.0",
+			expectedCode: "ES",
 		},
 		{
-			name:          "IP not in DB",
-			remoteIP:      "127.0.0.1",
-			expectedCode:  "",
-			shouldHaveVal: false, // The test DB doesn't contain localhost.
+			name:         "IP not in DB: default country code used",
+			remoteIP:     "127.0.0.1",
+			expectedCode: "DE", // The test DB doesn't contain localhost, so the default should be used.
 		},
 		{
 			name:     "EDNS0 Subnet Italian IPv4",
@@ -114,8 +110,7 @@ func TestIPLookupMetadata(t *testing.T) {
 				SourceNetmask: 24,
 				Address:       net.ParseIP("151.5.0.0"),
 			},
-			expectedCode:  "IT",
-			shouldHaveVal: true,
+			expectedCode: "IT",
 		},
 		{
 			name:     "EDNS0 Subnet French IPv6",
@@ -126,14 +121,12 @@ func TestIPLookupMetadata(t *testing.T) {
 				SourceNetmask: 64,
 				Address:       net.ParseIP("2001:41d0::"),
 			},
-			expectedCode:  "FR",
-			shouldHaveVal: true,
+			expectedCode: "FR",
 		},
 		{
-			name:          "Invalid IP format in state",
-			remoteIP:      "999.999.999.999", // net.ParseIP returns nil
-			expectedCode:  "",
-			shouldHaveVal: false,
+			name:         "Invalid IP format in state",
+			remoteIP:     "999.999.999.999", // net.ParseIP returns nil
+			expectedCode: "DE",              // Default country code is being used
 		},
 	}
 
@@ -159,13 +152,6 @@ func TestIPLookupMetadata(t *testing.T) {
 			ctx = ipLookup.Metadata(ctx, state)
 
 			valFunc := metadata.ValueFunc(ctx, pluginName+"/country/code")
-
-			if !tc.shouldHaveVal {
-				if valFunc != nil {
-					t.Errorf("Expected no metadata value, but got one: %s", valFunc())
-				}
-				return
-			}
 
 			if valFunc == nil {
 				t.Fatal("Expected metadata value to be set, but it was not")

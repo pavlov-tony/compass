@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package discovery.v1;
+
+option go_package = "compass/controlplane/discovery/v1";
+
+service ConfigService {
+  rpc UpdateConfig(UpdateConfigRequest) returns (stream UpdateConfigResponse);
+}
+
+message UpdateConfigRequest {
+  string node_id = 1;
+}
+
+message UpdateConfigResponse {
+  map<string, IPList> routes = 1;
+}
+
+message IPList {
+  repeated IPAddress ips = 1;
+}
+
+message IPAddress {
+  oneof address {
+    bytes v4 = 1;
+    bytes v6 = 2;
+  }
+}

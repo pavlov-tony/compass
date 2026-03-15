@@ -36,13 +36,31 @@ func TestSetup(t *testing.T) {
 			shouldErr: true,
 		},
 		{
-			name:      "Non-existent file",
-			input:     `iplookup /tmp/nonexistent.mmdb`,
+			name: "Non-existent file",
+			input: `iplookup /tmp/nonexistent.mmdb` + ` {
+				default_country_code DE
+			}`,
 			shouldErr: true,
 		},
 		{
-			name:      "Valid configuration",
-			input:     `iplookup ` + dbFile,
+			name: "Empty default country code",
+			input: `iplookup ` + dbFile + ` {
+				default_country_code 
+			}`,
+			shouldErr: true,
+		},
+		{
+			name: "Invalid default country code",
+			input: `iplookup ` + dbFile + ` {
+				default_country_code Germany
+			}`,
+			shouldErr: true,
+		},
+		{
+			name: "Valid configuration",
+			input: `iplookup ` + dbFile + ` {
+				default_country_code DE
+			}`,
 			shouldErr: false,
 		},
 	}

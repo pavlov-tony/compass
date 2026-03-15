@@ -2,7 +2,7 @@ package steering
 
 import (
 	"context"
-	"net"
+	"net/netip"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/metadata"
@@ -14,14 +14,20 @@ var log = clog.NewWithPlugin(pluginName)
 
 type Steering struct {
 	next        plugin.Handler
-	routes      map[string]net.IP
+	watcher     Watcher
 	metadataKey string
-	fallbackIP  net.IP
+	fallbackIP  netip.Addr
 }
 
-func NewSteering(routes map[string]net.IP, metadataKey string, fallbackIP net.IP) *Steering {
+type Watcher interface {
+	StartWatcher() error
+	Close() error
+	GetRoutes() map[string][]netip.Addr
+}
+
+func NewSteering(watcher Watcher, metadataKey string, fallbackIP netip.Addr) *Steering {
 	return &Steering{
-		routes:      routes,
+		watcher:     watcher,
 		metadataKey: metadataKey,
 		fallbackIP:  fallbackIP,
 	}
@@ -36,24 +42,30 @@ func (s *Steering) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 		country = countryFunc()
 	}
 
-	ip, ok := s.routes[country]
-	if !ok {
+	ips, ok := s.watcher.GetRoutes()[country]
+	if !ok || len(ips) == 0 {
 		// set default fallback IP in case of lack of routes
-		ip = s.fallbackIP
+		ips = []netip.Addr{s.fallbackIP}
 	}
 
 	qtype := r.Question[0].Qtype
-	// Check if the query type matches the IPv4 version
-	if qtype == dns.TypeA && ip.To4() != nil {
+	var answers []dns.RR
+
+	// Collect all matching records
+	for _, ip := range ips {
+		if qtype == dns.TypeA && ip.Is4() {
+			answers = append(answers, &dns.A{
+				Hdr: dns.RR_Header{Name: r.Question[0].Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+				A:   ip.AsSlice(),
+			})
+		}
+	}
+
+	if len(answers) > 0 {
 		m := new(dns.Msg)
 		m.SetReply(r)
 		m.Authoritative = true
-
-		rr := &dns.A{
-			Hdr: dns.RR_Header{Name: r.Question[0].Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
-			A:   ip,
-		}
-		m.Answer = []dns.RR{rr}
+		m.Answer = answers
 
 		return dns.RcodeSuccess, w.WriteMsg(m)
 	}

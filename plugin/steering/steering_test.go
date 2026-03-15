@@ -2,7 +2,7 @@ package steering
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/coredns/coredns/plugin"
@@ -13,14 +13,25 @@ import (
 )
 
 func TestServeDNS(t *testing.T) {
-	routes := map[string]net.IP{
-		"DE": net.ParseIP("1.2.3.4"),
-		"ES": net.ParseIP("4.3.2.1"),
+	mockWatcher := &mockWatcher{
+		startWatcherFn: func() error {
+			return nil
+		},
+		closeFn: func() error {
+			return nil
+		},
+		getRoutesFn: func() map[string][]netip.Addr {
+			return map[string][]netip.Addr{
+				"DE": {netip.MustParseAddr("1.2.3.4"), netip.MustParseAddr("1.2.3.5")},
+				"ES": {netip.MustParseAddr("4.3.2.1")},
+			}
+		},
 	}
-	fallbackIP := net.ParseIP("1.1.1.1")
+
+	fallbackIP := netip.MustParseAddr("1.1.1.1")
 	metadataKey := "iplookup/country/code"
 
-	s := NewSteering(routes, metadataKey, fallbackIP)
+	s := NewSteering(mockWatcher, metadataKey, fallbackIP)
 
 	// Mock next plugin to verify if it's called
 	nextCalled := false
@@ -109,4 +120,22 @@ func TestServeDNS(t *testing.T) {
 			}
 		})
 	}
+}
+
+type mockWatcher struct {
+	startWatcherFn func() error
+	closeFn        func() error
+	getRoutesFn    func() map[string][]netip.Addr
+}
+
+func (m *mockWatcher) StartWatcher() error {
+	return m.startWatcherFn()
+}
+
+func (m *mockWatcher) Close() error {
+	return m.closeFn()
+}
+
+func (m *mockWatcher) GetRoutes() map[string][]netip.Addr {
+	return m.getRoutesFn()
 }

@@ -30,7 +30,10 @@ func setup(c *caddy.Controller) error {
 }
 
 func iplookupParse(c *caddy.Controller) (*IPLookup, error) {
-	var dbPath string
+	var (
+		dbPath             string
+		defaultCountryCode string
+	)
 
 	for c.Next() {
 		if !c.NextArg() {
@@ -44,16 +47,40 @@ func iplookupParse(c *caddy.Controller) (*IPLookup, error) {
 		if len(c.RemainingArgs()) != 0 {
 			return nil, c.ArgErr()
 		}
+
+		for c.NextBlock() {
+			switch c.Val() {
+			case "default_country_code":
+				if !c.NextArg() {
+					return nil, c.ArgErr()
+				}
+				defaultCountryCode = c.Val()
+			default:
+				return nil, c.Errf("unknown property '%s'", c.Val())
+			}
+		}
 	}
 
 	if dbPath == "" {
 		return nil, c.Err("no db file specified")
 	}
 
-	db, err := OpenDB(dbPath)
+	if defaultCountryCode == "" {
+		return nil, c.Err("no default country code specified")
+	}
+	if len(defaultCountryCode) != 2 {
+		return nil, c.Errf("invalid default country code: %s", defaultCountryCode)
+	}
+	for _, r := range defaultCountryCode {
+		if r < 'A' || r > 'Z' {
+			return nil, c.Errf("invalid default country code: %s", defaultCountryCode)
+		}
+	}
+
+	db, err := openDB(dbPath)
 	if err != nil {
 		return nil, c.Errf("open database: %v", err)
 	}
 
-	return NewIPLookup(dbPath, db), nil
+	return NewIPLookup(dbPath, db, defaultCountryCode), nil
 }
